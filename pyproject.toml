@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geobard"
+version = "0.1.0"
+description = "Turn GeoJSON into prose. Window views, custom prompts, and image-generation prompts via any OpenAI-compatible chat-completions endpoint."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT OR Apache-2.0" }
+authors = [{ name = "Open Fantasy Map" }]
+dependencies = [
+    "fastapi>=0.116",
+    "uvicorn[standard]>=0.35",
+    "pydantic>=2.10",
+    "openai>=2.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest", "pytest-asyncio", "httpx"]
+
+[project.scripts]
+geobard = "geobard.app:main"
+
+[project.urls]
+Homepage = "https://github.com/openfantasymap/geobard"
+Issues = "https://github.com/openfantasymap/geobard/issues"
+
+[tool.setuptools.packages.find]
+include = ["geobard*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
