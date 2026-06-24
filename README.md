@@ -15,6 +15,17 @@ geobard speaks the OpenAI chat-completions API, so it works with OpenAI
 directly, OpenRouter, Ollama, Groq, Together, or any other compatible
 backend. OpenRouter is the default.
 
+It's the open-source narration engine from [GaiaWM](https://gaiawm.github.io) —
+the same capability behind **EyeOnWorld**, packaged as a standalone service.
+
+## Links
+
+- **Landing page** — https://openfantasymap.github.io/geobard/
+- **Talk** — https://openfantasymap.github.io/geobard/talk/ ([PDF](docs/talk/geobard_talk.pdf), [source](docs/talk/geobard_talk.md))
+
+Both are published from [`docs/`](docs/) via GitHub Pages (Settings → Pages →
+deploy from branch, `/docs`).
+
 ## Quick start
 
 ```bash

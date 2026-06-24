@@ -1,0 +1,237 @@
+/*!
+ * @theme cartographer
+ *
+ * A theme for geobard — "turn GeoJSON into prose".
+ * Warm cartographer's paper, deep ink, a teal survey-line accent and a
+ * compass-rose amber. Pairs Bricolage Grotesque (display/UI), Fraunces
+ * (the "prose" voice) and JetBrains Mono (data & code).
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Fraunces:ital,opsz,wght@0,9..144,400..600;1,9..144,400..500&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root{
+  /* Paper */
+  --paper:      oklch(0.978 0.012 95);
+  --paper-2:    oklch(0.950 0.016 92);
+  --paper-3:    oklch(0.915 0.020 88);
+  /* Ink */
+  --ink:        oklch(0.235 0.028 250);
+  --ink-2:      oklch(0.430 0.026 250);
+  --ink-mute:   oklch(0.575 0.022 250);
+  /* Night */
+  --night:      oklch(0.235 0.034 248);
+  --night-deep: oklch(0.175 0.032 250);
+  --night-line: oklch(0.430 0.030 240);
+  --on-night:   oklch(0.965 0.012 95);
+  --on-night-2: oklch(0.800 0.022 200);
+  /* Accents */
+  --teal:       oklch(0.620 0.110 192);
+  --teal-deep:  oklch(0.470 0.095 195);
+  --teal-soft:  oklch(0.910 0.045 192);
+  --amber:      oklch(0.730 0.130 70);
+  --amber-deep: oklch(0.560 0.130 55);
+  /* Rules */
+  --rule:       oklch(0.840 0.018 90);
+  --rule-firm:  oklch(0.740 0.022 90);
+  /* Fonts */
+  --ui:    "Bricolage Grotesque", system-ui, sans-serif;
+  --prose: "Fraunces", Georgia, serif;
+  --mono:  "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+
+/* ---------- stage ---------- */
+section{
+  width:1280px; height:720px;
+  padding:72px 88px;
+  font-family:var(--ui);
+  background:var(--paper);
+  color:var(--ink);
+  font-size:24px; line-height:1.5;
+  letter-spacing:-0.005em;
+  position:relative;
+  display:flex; flex-direction:column; justify-content:center;
+}
+section::after{ /* page number */
+  font-family:var(--mono); font-size:13px; color:var(--ink-mute);
+  letter-spacing:.05em;
+}
+
+/* faint coordinate grid on every slide */
+section::before{
+  content:""; position:absolute; inset:0; pointer-events:none; opacity:.30;
+  background-image:
+    linear-gradient(var(--rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--rule) 1px, transparent 1px);
+  background-size:64px 64px;
+  -webkit-mask:radial-gradient(120% 110% at 100% 0%, #000 0%, transparent 60%);
+          mask:radial-gradient(120% 110% at 100% 0%, #000 0%, transparent 60%);
+}
+
+/* ---------- headings ---------- */
+h1{
+  font-size:64px; font-weight:700; letter-spacing:-0.03em; line-height:1.04;
+  margin:0 0 .35em; color:var(--ink);
+}
+h2{
+  font-size:42px; font-weight:600; letter-spacing:-0.025em; line-height:1.08;
+  margin:0 0 .5em;
+}
+h2::before{ /* survey tick */
+  content:""; display:inline-block; width:22px; height:5px; border-radius:3px;
+  background:var(--amber); margin-right:.55rem; vertical-align:.18em;
+}
+h3{
+  font-size:26px; font-weight:700; letter-spacing:-0.01em; margin:0 0 .35em;
+  color:var(--teal-deep);
+}
+h4,h5,h6{font-size:15px; letter-spacing:.16em; text-transform:uppercase; font-weight:700;
+  color:var(--teal-deep); margin:0 0 1rem;}
+
+p{margin:0 0 .8em}
+strong{font-weight:700; color:var(--ink)}
+em{font-style:italic}
+a{color:var(--teal-deep); text-decoration:none; border-bottom:1px solid var(--rule-firm)}
+
+/* ---------- lists ---------- */
+ul,ol{margin:.2em 0 .6em; padding-left:0; list-style:none}
+li{position:relative; padding-left:1.6rem; margin:.5em 0}
+ul > li::before{
+  content:""; position:absolute; left:.1rem; top:.62em;
+  width:9px; height:9px; border-radius:2px;
+  background:var(--teal); transform:rotate(45deg);
+}
+ol{counter-reset:li}
+ol > li{counter-increment:li}
+ol > li::before{
+  content:counter(li); position:absolute; left:0; top:.05em;
+  font-family:var(--mono); font-size:.7em; font-weight:700;
+  color:var(--amber-deep);
+  width:1.3rem; height:1.3rem; border:1.5px solid var(--amber-deep);
+  border-radius:50%; display:grid; place-items:center;
+}
+li strong{color:var(--ink)}
+li > ul{margin:.2em 0}
+
+/* ---------- code ---------- */
+code{
+  font-family:var(--mono); font-size:.82em;
+  background:var(--paper-3); color:var(--ink);
+  padding:.08em .35em; border-radius:5px;
+}
+pre{
+  background:var(--night-deep); color:var(--on-night);
+  border:1px solid var(--night-line); border-radius:12px;
+  padding:22px 26px; margin:.3em 0;
+  font-size:17px; line-height:1.55; overflow:auto;
+  box-shadow:0 18px 40px -28px rgba(0,0,0,.6);
+}
+pre code{background:none; color:inherit; padding:0; font-size:1em}
+
+/* token coloring (marp/highlight.js) */
+.hljs-comment{color:var(--ink-mute)}
+.hljs-string,.hljs-attr{color:var(--amber)}
+.hljs-keyword,.hljs-built_in,.hljs-literal{color:var(--teal)}
+.hljs-number{color:var(--teal-soft)}
+.hljs-attribute,.hljs-name,.hljs-title{color:var(--on-night-2)}
+
+/* ---------- tables ---------- */
+table{border-collapse:collapse; width:100%; font-size:19px; margin:.3em 0}
+th{
+  text-align:left; font-family:var(--ui); font-weight:700; font-size:14px;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--teal-deep);
+  padding:.5em .7em; border-bottom:2px solid var(--rule-firm);
+}
+td{padding:.55em .7em; border-bottom:1px solid var(--rule); vertical-align:top}
+tr:last-child td{border-bottom:none}
+td code{font-size:.86em}
+
+/* ---------- blockquote: the "prose" voice ---------- */
+blockquote{
+  font-family:var(--prose); font-size:30px; line-height:1.42;
+  font-weight:400; color:var(--ink); font-style:italic;
+  margin:.2em 0; padding:.1em 0 .1em 1.4rem;
+  border-left:4px solid var(--amber);
+}
+blockquote p{margin:0 0 .3em}
+blockquote strong{color:var(--amber-deep); font-style:normal}
+blockquote cite{
+  display:block; font-family:var(--mono); font-style:normal; font-weight:500;
+  font-size:14px; letter-spacing:.04em; color:var(--ink-mute); margin-top:.6rem;
+}
+
+/* ---------- header / footer / pagination ---------- */
+header{
+  font-family:var(--mono); font-size:13px; letter-spacing:.06em;
+  color:var(--ink-mute); top:34px; left:88px; right:88px;
+}
+footer{
+  font-family:var(--mono); font-size:13px; letter-spacing:.04em;
+  color:var(--ink-mute); bottom:30px; left:88px;
+}
+section[data-marpit-pagination]::after{ right:46px; bottom:30px; }
+
+/* ---------- utility columns ---------- */
+.columns{display:grid; grid-template-columns:1fr 1fr; gap:40px; align-items:start}
+.columns-3{display:grid; grid-template-columns:repeat(3,1fr); gap:28px; align-items:start}
+.small{font-size:18px; line-height:1.5}
+.muted{color:var(--ink-mute)}
+.tick{font-family:var(--mono); font-size:14px; letter-spacing:.16em; text-transform:uppercase; color:var(--teal-deep); font-weight:700}
+.endpoint{font-family:var(--mono); color:var(--teal-deep); font-weight:700}
+
+/* card-ish boxes from blockquote-free content */
+.box{background:var(--paper-2); border:1px solid var(--rule); border-radius:12px; padding:22px 24px}
+
+/* ---------- LEAD / TITLE slides ---------- */
+section.lead{justify-content:center; text-align:left}
+section.lead h1{font-size:88px; letter-spacing:-0.04em; line-height:1.0}
+section.lead h1 em{font-style:normal; color:var(--amber-deep)}
+section.lead .tick{margin-bottom:1.4rem; display:block}
+section.lead p{font-size:26px; color:var(--ink-2); max-width:24ch}
+
+/* ---------- DARK slides ---------- */
+section.dark{
+  background:
+    radial-gradient(900px 520px at 82% -10%, color-mix(in oklch, var(--teal) 24%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--night) 0%, var(--night-deep) 100%);
+  color:var(--on-night);
+}
+section.dark::before{opacity:.22;
+  background-image:
+    linear-gradient(var(--night-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--night-line) 1px, transparent 1px);}
+section.dark h1,section.dark h2{color:var(--on-night)}
+section.dark h1 em{color:var(--amber)}
+section.dark h3{color:var(--teal)}
+section.dark strong{color:var(--on-night)}
+section.dark p{color:var(--on-night-2)}
+section.dark ul > li::before{background:var(--teal)}
+section.dark a{color:var(--teal); border-color:var(--night-line)}
+section.dark blockquote{color:var(--on-night); border-left-color:var(--amber)}
+section.dark blockquote strong{color:var(--amber)}
+section.dark blockquote cite{color:var(--on-night-2)}
+section.dark code{background:color-mix(in oklch,var(--on-night) 12%, transparent); color:var(--on-night)}
+section.dark table th{color:var(--teal)}
+section.dark td{border-color:var(--night-line)}
+section.dark th{border-color:var(--night-line)}
+section.dark .muted{color:var(--on-night-2)}
+section.dark .box{background:color-mix(in oklch,var(--on-night) 6%, transparent); border-color:var(--night-line)}
+section.dark::after{color:var(--on-night-2)}
+section.dark footer, section.dark header{color:var(--on-night-2)}
+
+/* ---------- PROSE accent (for narration samples) ---------- */
+.prose{font-family:var(--prose); font-size:30px; line-height:1.45; font-style:italic}
+.loc{color:var(--amber-deep)}
+section.dark .loc{color:var(--amber)}
+
+/* the GaiaWM layer stack */
+.stack{display:flex; flex-direction:column; gap:10px; margin-top:.4em}
+.layer{display:grid; grid-template-columns:200px 1fr; align-items:center; gap:20px;
+  border:1px solid var(--rule); border-radius:10px; padding:12px 18px; background:var(--paper)}
+.layer .nm{font-weight:700}
+.layer .ds{color:var(--ink-mute); font-size:18px}
+.layer.hl{border-color:var(--amber-deep); background:linear-gradient(90deg, color-mix(in oklch,var(--amber) 18%, var(--paper)), var(--paper) 70%)}
+.layer.hl .nm{color:var(--amber-deep)}
+section.dark .layer{background:color-mix(in oklch,var(--on-night) 5%, transparent); border-color:var(--night-line)}
+section.dark .layer .ds{color:var(--on-night-2)}
+section.dark .layer.hl{background:linear-gradient(90deg, color-mix(in oklch,var(--amber) 28%, transparent), transparent 70%); border-color:var(--amber)}
+section.dark .layer.hl .nm{color:var(--amber)}

@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>geobard — turn GeoJSON into prose</title>
+<meta name="description" content="geobard is a small open-source FastAPI service that turns a GeoJSON scene into natural-language prose: window views, answers to questions, and image-generation prompts. It speaks the OpenAI chat-completions API. The open-source narration engine from GaiaWM — the capability behind EyeOnWorld.">
+<meta property="og:title" content="geobard — turn GeoJSON into prose">
+<meta property="og:description" content="A GeoJSON scene in, natural-language prose out. The open-source narration engine from GaiaWM — the capability behind EyeOnWorld.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Fraunces:ital,opsz,wght@0,9..144,400..600;1,9..144,400..500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Paper & ink */
+  --paper:      oklch(0.978 0.012 95);
+  --paper-2:    oklch(0.952 0.016 92);
+  --paper-3:    oklch(0.918 0.020 88);
+  --ink:        oklch(0.235 0.028 250);
+  --ink-2:      oklch(0.430 0.026 250);
+  --ink-mute:   oklch(0.575 0.022 250);
+  /* Night (hero) */
+  --night:      oklch(0.260 0.035 245);
+  --night-2:    oklch(0.215 0.034 248);
+  --night-deep: oklch(0.175 0.032 250);
+  --night-line: oklch(0.420 0.030 240);
+  --on-night:   oklch(0.965 0.012 95);
+  --on-night-2: oklch(0.800 0.022 200);
+  /* Cartographer accents */
+  --teal:       oklch(0.620 0.110 192);
+  --teal-deep:  oklch(0.480 0.095 195);
+  --teal-soft:  oklch(0.910 0.045 192);
+  --amber:      oklch(0.730 0.130 70);
+  --amber-deep: oklch(0.580 0.130 55);
+  /* Rules */
+  --rule:       oklch(0.860 0.018 90);
+  --rule-firm:  oklch(0.760 0.022 90);
+  /* Type */
+  --ui:    "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --prose: "Fraunces", Georgia, "Times New Roman", serif;
+  --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  /* Space (4pt) */
+  --s1:.25rem; --s2:.5rem; --s3:.75rem; --s4:1rem; --s5:1.5rem;
+  --s6:2rem; --s7:3rem; --s8:4rem; --s9:6rem;
+  --maxw: 1120px;
+  --radius: 14px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--ui); font-size:18px; line-height:1.55;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+a{color:inherit}
+h1,h2,h3{line-height:1.08; letter-spacing:-0.02em; font-weight:600; margin:0}
+p{margin:0}
+code,kbd,pre{font-family:var(--mono)}
+.wrap{max-width:var(--maxw); margin-inline:auto; padding-inline:var(--s5)}
+.eyebrow{
+  font-size:.74rem; letter-spacing:.18em; text-transform:uppercase;
+  font-weight:700; color:var(--teal-deep);
+}
+.muted{color:var(--ink-mute)}
+
+/* ---------- top bar ---------- */
+.bar{
+  position:sticky; top:0; z-index:30;
+  backdrop-filter:saturate(1.2) blur(8px);
+  background:color-mix(in oklch, var(--paper) 82%, transparent);
+  border-bottom:1px solid var(--rule);
+}
+.bar .wrap{display:flex; align-items:center; gap:var(--s5); height:60px}
+.brand{display:flex; align-items:center; gap:.55rem; font-weight:700; letter-spacing:-.02em; font-size:1.05rem}
+.brand .dot{width:11px; height:11px; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, var(--amber), var(--amber-deep));
+  box-shadow:0 0 0 4px color-mix(in oklch, var(--amber) 22%, transparent)}
+.bar nav{margin-left:auto; display:flex; align-items:center; gap:var(--s5); font-size:.92rem}
+.bar nav a{text-decoration:none; color:var(--ink-2); transition:color .15s}
+.bar nav a:hover{color:var(--ink)}
+.bar .gh{
+  display:inline-flex; align-items:center; gap:.45rem; padding:.4rem .8rem;
+  border:1px solid var(--rule-firm); border-radius:999px; font-weight:600; color:var(--ink);
+}
+.bar .gh:hover{border-color:var(--ink); background:var(--paper-2)}
+@media(max-width:680px){ .bar .hideSm{display:none} }
+
+/* ---------- hero ---------- */
+.hero{
+  position:relative; overflow:hidden; color:var(--on-night);
+  background:
+    radial-gradient(1200px 600px at 78% -10%, color-mix(in oklch, var(--teal) 26%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--night) 0%, var(--night-2) 55%, var(--night-deep) 100%);
+}
+.hero::before{ /* coordinate grid */
+  content:""; position:absolute; inset:0; opacity:.30; pointer-events:none;
+  background-image:
+    linear-gradient(var(--night-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--night-line) 1px, transparent 1px);
+  background-size:44px 44px; mask:radial-gradient(120% 90% at 50% 0%, #000 38%, transparent 78%);
+}
+.hero::after{ /* contour rings */
+  content:""; position:absolute; right:-180px; top:-160px; width:620px; height:620px;
+  border-radius:50%; pointer-events:none; opacity:.22;
+  background:
+    repeating-radial-gradient(circle at center,
+      transparent 0 28px, color-mix(in oklch, var(--amber) 70%, transparent) 28px 29px);
+  mask:radial-gradient(circle at center, #000 0 50%, transparent 72%);
+}
+.hero .wrap{position:relative; z-index:2; padding-block:var(--s9) var(--s8)}
+.hero-grid{display:grid; grid-template-columns:1.05fr .95fr; gap:var(--s8); align-items:center}
+@media(max-width:900px){ .hero-grid{grid-template-columns:1fr; gap:var(--s7)} }
+.hero h1{font-size:clamp(2.6rem, 6vw, 4.4rem); letter-spacing:-.035em}
+.hero h1 em{font-style:normal; color:var(--amber)}
+.hero .lead{margin-top:var(--s5); font-size:clamp(1.05rem,1.6vw,1.32rem); color:var(--on-night-2); max-width:34ch}
+.pills{display:flex; flex-wrap:wrap; gap:.5rem; margin-top:var(--s5)}
+.pill{font-size:.78rem; font-weight:600; letter-spacing:.02em; padding:.34rem .7rem; border-radius:999px;
+  border:1px solid var(--night-line); color:var(--on-night-2);
+  background:color-mix(in oklch, var(--on-night) 6%, transparent)}
+.cta{display:flex; flex-wrap:wrap; gap:var(--s3); margin-top:var(--s6)}
+.btn{display:inline-flex; align-items:center; gap:.5rem; font-weight:600; font-size:1rem;
+  padding:.74rem 1.2rem; border-radius:11px; text-decoration:none; transition:transform .12s, box-shadow .12s, background .15s}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--amber); color:oklch(0.24 0.04 60); box-shadow:0 8px 22px -10px color-mix(in oklch,var(--amber) 80%,#000)}
+.btn-primary:hover{background:color-mix(in oklch,var(--amber) 92%,#fff)}
+.btn-ghost{color:var(--on-night); border:1px solid var(--night-line)}
+.btn-ghost:hover{background:color-mix(in oklch,var(--on-night) 8%,transparent); border-color:var(--on-night-2)}
+
+/* transformation card in hero */
+.transform{
+  background:color-mix(in oklch, var(--night-deep) 70%, #000 6%);
+  border:1px solid var(--night-line); border-radius:var(--radius);
+  box-shadow:0 30px 60px -30px #000; overflow:hidden;
+}
+.transform .row{display:grid; grid-template-columns:1fr; }
+.transform .seg{padding:var(--s5)}
+.transform .seg + .seg{border-top:1px dashed var(--night-line)}
+.transform .tag{font-size:.7rem; letter-spacing:.16em; text-transform:uppercase; font-weight:700; color:var(--on-night-2); margin-bottom:.6rem; display:flex; align-items:center; gap:.5rem}
+.transform .tag .k{color:var(--teal)}
+.transform pre{margin:0; font-size:.78rem; line-height:1.5; color:var(--on-night-2); white-space:pre-wrap; word-break:break-word}
+.transform .arrow{display:flex; justify-content:center; align-items:center; gap:.6rem; padding:.4rem 0;
+  color:var(--amber); font-weight:700; font-size:.8rem; letter-spacing:.12em}
+.transform .out{font-family:var(--prose); font-size:1.02rem; line-height:1.55; color:var(--on-night)}
+.transform .out .loc{color:var(--amber)}
+
+/* ---------- section scaffolding ---------- */
+section{padding-block:var(--s9)}
+.sec-head{max-width:62ch}
+.sec-head h2{font-size:clamp(1.8rem,3.3vw,2.6rem); margin-top:.6rem}
+.sec-head p{margin-top:var(--s4); color:var(--ink-2); font-size:1.08rem}
+.divider{border:none; border-top:1px solid var(--rule); margin:0}
+
+/* feature cards */
+.cards{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--s5); margin-top:var(--s7)}
+@media(max-width:860px){ .cards{grid-template-columns:1fr} }
+.card{background:var(--paper-2); border:1px solid var(--rule); border-radius:var(--radius); padding:var(--s6);
+  transition:border-color .15s, transform .15s, box-shadow .15s}
+.card:hover{border-color:var(--rule-firm); transform:translateY(-2px); box-shadow:0 18px 40px -28px var(--ink)}
+.card .ic{width:42px; height:42px; border-radius:11px; display:grid; place-items:center; font-size:1.3rem;
+  background:var(--teal-soft); color:var(--teal-deep); border:1px solid color-mix(in oklch,var(--teal) 30%, transparent)}
+.card h3{font-size:1.22rem; margin-top:var(--s4)}
+.card .ep{font-family:var(--mono); font-size:.76rem; color:var(--teal-deep); margin-top:.5rem; font-weight:500}
+.card p{margin-top:var(--s3); color:var(--ink-2); font-size:.98rem}
+
+/* pipeline */
+.pipe{display:grid; grid-template-columns:1fr auto 1fr auto 1fr; align-items:stretch; gap:var(--s4); margin-top:var(--s7)}
+@media(max-width:860px){ .pipe{grid-template-columns:1fr; } .pipe .step-arrow{transform:rotate(90deg); justify-self:center} }
+.pstep{background:var(--paper-2); border:1px solid var(--rule); border-radius:12px; padding:var(--s5); text-align:center}
+.pstep .lab{font-weight:700; letter-spacing:-.01em}
+.pstep .sub{font-size:.86rem; color:var(--ink-mute); margin-top:.35rem}
+.pstep.mid{background:var(--ink); color:var(--on-night); border-color:var(--ink)}
+.pstep.mid .sub{color:var(--on-night-2)}
+.step-arrow{display:flex; align-items:center; color:var(--amber-deep); font-weight:800; font-size:1.4rem}
+.backends{display:flex; flex-wrap:wrap; gap:.5rem; margin-top:var(--s6); justify-content:center}
+.backends .b{font-family:var(--mono); font-size:.8rem; padding:.4rem .75rem; border-radius:8px;
+  background:var(--paper-3); border:1px solid var(--rule); color:var(--ink-2)}
+
+/* example block */
+.example{display:grid; grid-template-columns:1fr 1fr; gap:0; margin-top:var(--s7);
+  border:1px solid var(--rule); border-radius:var(--radius); overflow:hidden; background:var(--paper-2)}
+@media(max-width:860px){ .example{grid-template-columns:1fr} }
+.example .in{background:var(--night-deep); color:var(--on-night-2); padding:var(--s6)}
+.example .in .tag, .example .out .tag{font-size:.7rem; letter-spacing:.16em; text-transform:uppercase; font-weight:700; margin-bottom:var(--s4); display:block}
+.example .in .tag{color:var(--teal)}
+.example .in pre{margin:0; font-size:.8rem; line-height:1.55; white-space:pre-wrap; word-break:break-word}
+.example .out{padding:var(--s6)}
+.example .out .tag{color:var(--amber-deep)}
+.example .out .prose{font-family:var(--prose); font-size:1.12rem; line-height:1.62; color:var(--ink)}
+.example .out .prose .loc{color:var(--amber-deep); font-style:italic}
+.example .out .meta{margin-top:var(--s5); font-family:var(--mono); font-size:.74rem; color:var(--ink-mute)}
+
+/* quickstart */
+.qs{display:grid; grid-template-columns:1fr 1fr; gap:var(--s5); margin-top:var(--s7)}
+@media(max-width:860px){ .qs{grid-template-columns:1fr} }
+.codecard{background:var(--night-deep); border:1px solid var(--night-line); border-radius:var(--radius); overflow:hidden}
+.codecard .h{display:flex; align-items:center; gap:.5rem; padding:.7rem var(--s5); border-bottom:1px solid var(--night-line); color:var(--on-night-2); font-size:.8rem; font-weight:600}
+.codecard .h .dots{display:flex; gap:.35rem; margin-right:.4rem}
+.codecard .h .dots i{width:10px; height:10px; border-radius:50%; background:var(--night-line)}
+.codecard pre{margin:0; padding:var(--s5); overflow:auto; color:var(--on-night); font-size:.82rem; line-height:1.6}
+.codecard .c-cmt{color:var(--ink-mute)}
+.codecard .c-flag{color:var(--teal)}
+.codecard .c-str{color:var(--amber)}
+
+/* api table */
+.api{margin-top:var(--s7); border:1px solid var(--rule); border-radius:var(--radius); overflow:hidden}
+.api .arow{display:grid; grid-template-columns:minmax(200px,260px) 1fr; gap:0; border-top:1px solid var(--rule)}
+.api .arow:first-child{border-top:none}
+.api .arow > div{padding:var(--s5)}
+.api .arow .ep{font-family:var(--mono); font-weight:700; font-size:.9rem; background:var(--paper-2)}
+.api .arow .ep .verb{color:#fff; background:var(--teal-deep); padding:.1rem .45rem; border-radius:6px; font-size:.72rem; margin-right:.5rem; letter-spacing:.04em}
+.api .arow .ep .verb.get{background:var(--ink-2)}
+.api .arow .desc{color:var(--ink-2); font-size:.96rem}
+.api .arow .desc code{font-size:.84rem; background:var(--paper-3); padding:.08rem .35rem; border-radius:5px}
+
+/* gaiawm ecosystem */
+.gaia{background:
+  radial-gradient(900px 500px at 15% 0%, color-mix(in oklch,var(--teal) 16%, transparent), transparent 55%),
+  var(--paper-2);
+  border-top:1px solid var(--rule); border-bottom:1px solid var(--rule)}
+.stack{display:grid; gap:var(--s3); margin-top:var(--s7); max-width:760px}
+.layer{display:grid; grid-template-columns:170px 1fr; align-items:center; gap:var(--s4);
+  border:1px solid var(--rule); border-radius:11px; padding:var(--s4) var(--s5); background:var(--paper)}
+.layer .nm{font-weight:700; letter-spacing:-.01em; display:flex; align-items:center; gap:.5rem}
+.layer .nm .em{font-size:1.1rem}
+.layer .ds{color:var(--ink-mute); font-size:.92rem}
+.layer.hl{border-color:var(--amber-deep); background:linear-gradient(90deg, color-mix(in oklch,var(--amber) 16%, var(--paper)) , var(--paper) 70%); box-shadow:0 0 0 1px color-mix(in oklch,var(--amber) 40%, transparent)}
+.layer.hl .nm{color:var(--amber-deep)}
+.layer.hl .badge{margin-left:auto; font-size:.66rem; font-weight:800; letter-spacing:.1em; color:#fff; background:var(--amber-deep); padding:.15rem .5rem; border-radius:6px}
+@media(max-width:620px){ .layer{grid-template-columns:1fr; gap:.3rem} }
+.eco-links{display:flex; flex-wrap:wrap; gap:var(--s3); margin-top:var(--s7)}
+.eco-links a{font-family:var(--mono); font-size:.86rem; text-decoration:none; color:var(--teal-deep);
+  border:1px solid var(--rule-firm); border-radius:999px; padding:.4rem .9rem; transition:.15s}
+.eco-links a:hover{background:var(--paper); border-color:var(--teal-deep)}
+
+/* footer */
+footer{background:var(--night-deep); color:var(--on-night-2); padding-block:var(--s8)}
+footer .wrap{display:flex; flex-wrap:wrap; gap:var(--s6); justify-content:space-between; align-items:flex-start}
+footer .brand{color:var(--on-night)}
+footer a{color:var(--on-night-2); text-decoration:none}
+footer a:hover{color:var(--on-night)}
+footer .cols{display:flex; gap:var(--s8); flex-wrap:wrap}
+footer .col h4{font-size:.74rem; letter-spacing:.14em; text-transform:uppercase; color:var(--on-night); margin:0 0 var(--s3)}
+footer .col a{display:block; font-size:.92rem; margin-bottom:.45rem}
+footer .lic{font-size:.8rem; color:var(--night-line); margin-top:var(--s6); width:100%; border-top:1px solid var(--night-2); padding-top:var(--s5)}
+
+@media (prefers-reduced-motion: reduce){ *{scroll-behavior:auto !important; transition:none !important} .btn:hover{transform:none} .card:hover{transform:none} }
+</style>
+</head>
+<body>
+
+<!-- ===== top bar ===== -->
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="#top" style="text-decoration:none"><span class="dot"></span>geobard</a>
+    <nav>
+      <a href="#what" class="hideSm">What it does</a>
+      <a href="#how" class="hideSm">How it works</a>
+      <a href="#api" class="hideSm">API</a>
+      <a href="#gaiawm">GaiaWM</a>
+      <a href="talk/" >Talk&nbsp;↗</a>
+      <a class="gh" href="https://github.com/openfantasymap/geobard" aria-label="geobard on GitHub">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
+        GitHub
+      </a>
+    </nav>
+  </div>
+</header>
+
+<!-- ===== hero ===== -->
+<a id="top"></a>
+<section class="hero" style="padding-block:0">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <span class="eyebrow" style="color:var(--on-night-2)">Open-source · FastAPI · OpenAI-compatible</span>
+        <h1 style="margin-top:var(--s4)">Turn GeoJSON<br>into <em>prose</em>.</h1>
+        <p class="lead">Give it a map scene — points, buildings, a point of view, a time of day — and geobard hands back a natural-language description, an answer to a question, or a ready-to-use image prompt.</p>
+        <div class="pills">
+          <span class="pill">Window views</span>
+          <span class="pill">Scene Q&amp;A</span>
+          <span class="pill">Image prompts</span>
+          <span class="pill">BYO model</span>
+        </div>
+        <div class="cta">
+          <a class="btn btn-primary" href="#quickstart">Quickstart →</a>
+          <a class="btn btn-ghost" href="https://github.com/openfantasymap/geobard">View on GitHub</a>
+        </div>
+      </div>
+
+      <!-- transformation card -->
+      <div class="transform" aria-hidden="false">
+        <div class="seg">
+          <div class="tag"><span class="k">{ }</span> GeoJSON scene in</div>
+<pre>{
+  "pov": { "lat": 44.49, "lng": 11.34 },
+  "bearing": 90, "time_of_day": "07:30",
+  "features": [
+    { "properties": {
+        "type": "buildings",
+        "name": "market hall" } }
+  ]
+}</pre>
+        </div>
+        <div class="arrow">↓ &nbsp;geobard&nbsp; ↓</div>
+        <div class="seg">
+          <div class="tag" style="color:var(--amber)">¶ Prose out</div>
+          <p class="out">You're looking east into the early light. Just <span class="loc">across the way</span> the old market hall squares off against the morning, its long roofline catching the first of the sun while the street in front is still half in shade…</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== what it does ===== -->
+<section id="what">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Three modes, one idea</span>
+      <h2>A scene goes in. Words come out.</h2>
+      <p>geobard is deliberately small: a thin, well-prompted layer between your map data and a language model. Three endpoints cover three jobs.</p>
+    </div>
+    <div class="cards">
+      <article class="card">
+        <div class="ic">👁️</div>
+        <h3>Window view</h3>
+        <div class="ep">POST /narrate/window</div>
+        <p>Stand at the point of view and describe what's around you, in plain human language — near, across the street, off to the left. No coordinates, no map-speak. Pick a <code>detail_level</code> of low, medium, or high.</p>
+      </article>
+      <article class="card">
+        <div class="ic">💬</div>
+        <h3>Ask the scene</h3>
+        <div class="ep">POST /narrate/prompt</div>
+        <p>Pass a question alongside the scene — <em>“What's the quickest way out on foot?”</em> — and get a grounded answer that reasons over what's actually present, staying vague where the data is.</p>
+      </article>
+      <article class="card">
+        <div class="ic">🎨</div>
+        <h3>Image prompt</h3>
+        <div class="ep">POST /image/prompt</div>
+        <p>Turn the same scene into a prompt built for an image model, foregrounding the architecture and city structure so the render is faithful to the place rather than generic.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ===== how it works ===== -->
+<section id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">How it works</span>
+      <h2>One small service, any backend.</h2>
+      <p>geobard speaks the OpenAI chat-completions API, so it runs against whatever you already use. Carefully-tuned prompts do the translation; the model does the writing. Non-standard fields in your GeoJSON are read as extra context.</p>
+    </div>
+    <div class="pipe">
+      <div class="pstep"><div class="lab">GeoJSON scene</div><div class="sub">features, <code>pov</code>, bearing, time of day, custom props</div></div>
+      <div class="step-arrow">→</div>
+      <div class="pstep mid"><div class="lab">geobard</div><div class="sub">mode-specific system + user prompts → chat completion</div></div>
+      <div class="step-arrow">→</div>
+      <div class="pstep"><div class="lab">Prose / prompt</div><div class="sub"><code>{ "text": "…", "model": "…" }</code></div></div>
+    </div>
+    <div class="backends">
+      <span class="b">OpenRouter <span class="muted">(default)</span></span>
+      <span class="b">OpenAI</span>
+      <span class="b">Ollama</span>
+      <span class="b">Groq</span>
+      <span class="b">Together</span>
+      <span class="b">…any OpenAI-compatible endpoint</span>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ===== example ===== -->
+<section id="example">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">See it</span>
+      <h2>From feature collection to a paragraph.</h2>
+      <p>The same scene can be set anywhere. Add a <code>system</code> prompt and the voice follows — here, a Forgotten Realms street at midday.</p>
+    </div>
+    <div class="example">
+      <div class="in">
+        <span class="tag">Request · POST /narrate/window</span>
+<pre>{
+  "geojson": {
+    "type": "FeatureCollection",
+    "pov":  { "lat": 33.12, "lng": -117.9 },
+    "bearing": 110,
+    "time_of_day": "12:30",
+    "features": [
+      { "properties": {
+          "type": "street",
+          "name": "Selduth Street" } },
+      { "properties": {
+          "type": "buildings",
+          "name": "residential row" } }
+    ]
+  },
+  "detail_level": "medium",
+  "system": [
+    "You narrate a Forgotten Realms scene."
+  ]
+}</pre>
+      </div>
+      <div class="out">
+        <span class="tag">Response · text</span>
+        <p class="prose">“Looking around, you're standing at the edge of a residential neighborhood where the midday sun beats down on the cobblestones. <span class="loc">Selduth Street</span> is just a few paces to your right, narrow and busy, its row houses leaning shoulder to shoulder as it bends out of sight…”</p>
+        <div class="meta">{ "model": "anthropic/claude-haiku-4.5" }</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ===== quickstart ===== -->
+<section id="quickstart">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Quickstart</span>
+      <h2>Running in two commands.</h2>
+      <p>Pull the container, point it at a model, and call it. Defaults to OpenRouter; set <code>GEOBARD_OPENAI_BASE_URL</code> for anything else.</p>
+    </div>
+    <div class="qs">
+      <div class="codecard">
+        <div class="h"><span class="dots"><i></i><i></i><i></i></span> run the service</div>
+<pre><span class="c-cmt"># 1 · start geobard</span>
+docker run --rm -p 8000:8000 \
+  -e GEOBARD_OPENAI_API_KEY=<span class="c-str">sk-or-…</span> \
+  -e GEOBARD_OPENAI_MODEL=<span class="c-str">anthropic/claude-haiku-4.5</span> \
+  ghcr.io/openfantasymap/geobard:latest</pre>
+      </div>
+      <div class="codecard">
+        <div class="h"><span class="dots"><i></i><i></i><i></i></span> call an endpoint</div>
+<pre><span class="c-cmt"># 2 · narrate a scene</span>
+curl -sS http://localhost:8000/narrate/window \
+  <span class="c-flag">-H</span> <span class="c-str">"content-type: application/json"</span> \
+  <span class="c-flag">-d</span> <span class="c-str">'{ "geojson": { … },
+        "detail_level": "medium" }'</span>
+
+<span class="c-cmt"># → { "text": "…", "model": "…" }</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ===== api ===== -->
+<section id="api">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">API surface</span>
+      <h2>Four routes, that's all.</h2>
+      <p>Every request can override the <code>model</code> and <code>temperature</code> per call. Window and image modes take a <code>detail_level</code>; all narration modes accept optional <code>system</code> prompt lines.</p>
+    </div>
+    <div class="api">
+      <div class="arow">
+        <div class="ep"><span class="verb">POST</span>/narrate/window</div>
+        <div class="desc">A generic window view. Body takes <code>geojson</code>, optional <code>system[]</code>, <code>detail_level</code>. Returns <code>{ text, model }</code>.</div>
+      </div>
+      <div class="arow">
+        <div class="ep"><span class="verb">POST</span>/narrate/prompt</div>
+        <div class="desc">Answer a custom <code>prompt</code> about the scene. Same body plus the question string.</div>
+      </div>
+      <div class="arow">
+        <div class="ep"><span class="verb">POST</span>/image/prompt</div>
+        <div class="desc">Produce an image-generation prompt. Takes optional <code>image_system[]</code> style hints and a <code>detail_level</code>.</div>
+      </div>
+      <div class="arow">
+        <div class="ep"><span class="verb get">GET</span>/healthz</div>
+        <div class="desc">Returns <code>{ "status": "ok" }</code> once required env is present. Used by the Docker healthcheck.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== gaiawm ===== -->
+<section id="gaiawm" class="gaia">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Part of GaiaWM</span>
+      <h2>The narration engine behind EyeOnWorld — open-sourced.</h2>
+      <p><a href="https://gaiawm.github.io" style="color:var(--teal-deep)"><strong>GaiaWM</strong></a> is world infrastructure for AI — a simulation-intelligence platform that layers space, time, society, and causal influence over 40+ canonical worlds. geobard is its <strong>narration layer</strong>: the capability that turns a slice of that world into something a person can read. It's the same engine behind <strong>EyeOnWorld</strong> — click any location on the map, get an immersive description — packaged as a standalone, open-source service.</p>
+    </div>
+
+    <div class="stack" role="list" aria-label="GaiaWM layer stack">
+      <div class="layer" role="listitem"><div class="nm"><span class="em">🗺️</span> Spatial</div><div class="ds">40+ worlds with GIS precision — Toril, Star Wars, Middle-earth</div></div>
+      <div class="layer" role="listitem"><div class="nm"><span class="em">⏰</span> Temporal</div><div class="ds">Time-aware state — history, seasons, cycles</div></div>
+      <div class="layer" role="listitem"><div class="nm"><span class="em">👥</span> Social</div><div class="ds">Factions, relationships, reputation</div></div>
+      <div class="layer" role="listitem"><div class="nm"><span class="em">🌊</span> Influence</div><div class="ds">Causal simulation — channels &amp; propagation</div></div>
+      <div class="layer hl" role="listitem"><div class="nm"><span class="em">🧠</span> Narration <span class="badge">geobard</span></div><div class="ds">Perception &amp; description — geobard &amp; EyeOnWorld</div></div>
+    </div>
+
+    <div class="eco-links">
+      <a href="https://gaiawm.github.io">gaiawm.github.io</a>
+      <a href="https://openfantasymaps.org">openfantasymaps.org · EyeOnWorld</a>
+      <a href="https://openhistorymap.org">openhistorymap.org</a>
+      <a href="https://rpg-schema.org">rpg-schema.org</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== footer ===== -->
+<footer>
+  <div class="wrap">
+    <div>
+      <div class="brand" style="font-weight:700; font-size:1.1rem; display:flex; align-items:center; gap:.5rem">
+        <span class="dot" style="width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 30%, var(--amber), var(--amber-deep))"></span>geobard
+      </div>
+      <p style="margin-top:var(--s3); max-width:30ch; font-size:.92rem">Turn GeoJSON into prose. A small FastAPI service by Open Fantasy Map.</p>
+    </div>
+    <div class="cols">
+      <div class="col">
+        <h4>Project</h4>
+        <a href="https://github.com/openfantasymap/geobard">GitHub repository</a>
+        <a href="https://github.com/openfantasymap/geobard#api">API reference</a>
+        <a href="talk/">Presentation ↗</a>
+        <a href="https://github.com/openfantasymap/geobard/issues">Issues</a>
+      </div>
+      <div class="col">
+        <h4>Ecosystem</h4>
+        <a href="https://gaiawm.github.io">GaiaWM</a>
+        <a href="https://openfantasymaps.org">OpenFantasyMaps</a>
+        <a href="https://openhistorymap.org">OpenHistoryMap</a>
+        <a href="https://rpg-schema.org">RPG-Schema</a>
+      </div>
+    </div>
+    <div class="lic">Dual-licensed under MIT or Apache-2.0, at your option. © Open Fantasy Map.</div>
+  </div>
+</footer>
+
+</body>
+</html>
