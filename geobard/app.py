@@ -1,6 +1,6 @@
 """FastAPI surface for geobard.
 
-Three endpoints — one per LLM mode. Each request can override the model;
+Four endpoints — one per LLM mode. Each request can override the model;
 defaults come from env (``GEOBARD_OPENAI_MODEL``). The OpenAI client is
 configured against ``GEOBARD_OPENAI_BASE_URL`` (default OpenRouter) using
 ``GEOBARD_OPENAI_API_KEY``.
@@ -42,7 +42,7 @@ def _settings() -> _Settings:
 def _client() -> OpenAI:
     s = _settings()
     return OpenAI(api_key=s.api_key, base_url=s.base_url)
-
+    
 
 class WindowReq(BaseModel):
     geojson: dict[str, Any]
@@ -68,6 +68,17 @@ class ImageReq(BaseModel):
     temperature: float | None = None
 
 
+class PhotoReq(BaseModel):
+    geojson: dict[str, Any]
+    image_url: str
+    viewpoint: str = "ground"          # ground | aerial | oblique
+    detail_level: str = "medium"
+    grounding: str = "loose"           # loose | strict
+    system: list[str] | None = None
+    model: str | None = None           # must be a vision-capable model
+    temperature: float | None = None
+
+
 class TextResp(BaseModel):
     text: str = Field(description="LLM-generated prose.")
     model: str
@@ -76,15 +87,16 @@ class TextResp(BaseModel):
 def create_app() -> FastAPI:
     app = FastAPI(
         title="geobard",
-        version="0.1.0",
-        description="Turn GeoJSON into prose: window views, custom prompts, and image-generation prompts.",
+        version="0.2.0",
+        description="Turn GeoJSON into prose: window views, custom prompts, image-generation prompts, and data-driven photo interpretation.",
     )
 
     @app.get("/")
     def root():
-        return {"service": "geobard", "version": "0.1.0", "endpoints": [
+        return {"service": "geobard", "version": "0.2.0", "endpoints": [
             "POST /narrate/window",
             "POST /narrate/prompt",
+            "POST /narrate/photo",
             "POST /image/prompt",
             "GET  /healthz",
         ]}
@@ -131,6 +143,21 @@ def create_app() -> FastAPI:
             text = llm.image_prompt(
                 client=_client(), model=model, geojson=req.geojson,
                 image_system=req.image_system, detail_level=req.detail_level,
+                temperature=req.temperature if req.temperature is not None else s.default_temperature,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=f"upstream LLM error: {exc}") from exc
+        return TextResp(text=text, model=model)
+
+    @app.post("/narrate/photo", response_model=TextResp)
+    def narrate_photo(req: PhotoReq):
+        s = _settings()
+        model = req.model or s.model
+        try:
+            text = llm.interpret_photo(
+                client=_client(), model=model, image_url=req.image_url, geojson=req.geojson,
+                viewpoint=req.viewpoint, detail_level=req.detail_level, grounding=req.grounding,
+                system=req.system,
                 temperature=req.temperature if req.temperature is not None else s.default_temperature,
             )
         except Exception as exc:  # noqa: BLE001

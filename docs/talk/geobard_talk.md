@@ -62,7 +62,7 @@ SPEAKER:
 
 ---
 
-## One small service. Three jobs.
+## One small service. Four modes.
 
 geobard is a thin, well-prompted layer between **your map data** and **a language model.**
 
@@ -92,12 +92,14 @@ Rewrite the scene as a prompt for an image model.
 
 <br>
 
-**Every call** can override `model` and `temperature`. No state, no database.
+**Three modes generate from data.** A fourth — `/narrate/photo` — reads a real
+photo *through* it (coming up). Every call can override `model` and `temperature`.
 
 <!--
 SPEAKER:
-- Emphasise smallness: ~3 endpoints, two source files (app.py + llm.py).
+- Emphasise smallness: four endpoints, two source files (app.py + llm.py).
 - The LLM helpers are pure functions — importable directly into other services.
+- The fourth mode is the only multimodal one; the other three are data-only.
 -->
 
 ---
@@ -202,6 +204,45 @@ SPEAKER:
 
 ---
 
+## Mode 4 — read a photo *through* its data
+
+A real **photo** carries appearance; the **data** carries meaning. Interpret one
+against the other — don't caption, and don't narrate the data alone.
+
+<div class="columns">
+<div>
+
+```json
+{
+  "geojson":   { "...same area..." },
+  "image_url": "https://…/tower.jpg",
+  "viewpoint": "ground",
+  "grounding": "loose"
+}
+```
+
+<span class="tick">identify → explain → reconcile · needs a vision model · new in 0.2</span>
+</div>
+<div>
+
+> The leaning tower on your left is the old **Harper watchpost**. The record
+> remembers it as a lookout over the river road — but the boarded windows and the
+> ivy tell a plainer story: <span class="loc">no one has watched here in years.</span>
+</div>
+</div>
+
+<!--
+SPEAKER:
+- The signature move is *reconciliation*: data says "active watchpost", the photo
+  shows a ruin → interpret the gap, tentatively.
+- viewpoint (ground / aerial / oblique) tells the model how photo and data register.
+- grounding: strict = only what's visible; loose = may add nearby context. Honest either way.
+- This is the multimodal sibling of /narrate/window: window imagines a view from
+  data; photo interprets a real one.
+-->
+
+---
+
 ## How it works
 
 ```
@@ -253,11 +294,12 @@ SPEAKER:
 |---|---|
 | <span class="endpoint">POST /narrate/window</span> | Window view. `geojson`, `system[]`, `detail_level` → `{text, model}` |
 | <span class="endpoint">POST /narrate/prompt</span> | Answer a `prompt` about the scene |
+| <span class="endpoint">POST /narrate/photo</span> | Interpret an `image_url` through same-area data (vision model) |
 | <span class="endpoint">POST /image/prompt</span> | Image-gen prompt; `image_system[]` style hints |
 | <span class="endpoint">GET&nbsp;&nbsp;/healthz</span> | `{"status":"ok"}` once env is valid (Docker healthcheck) |
 
 All bodies take optional `model` and `temperature`. Narration modes accept
-`system[]` prompt lines; window & image modes take `detail_level`.
+`system[]` prompt lines; window, image & photo modes take `detail_level`.
 
 <!--
 SPEAKER:

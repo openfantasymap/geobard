@@ -163,6 +163,19 @@ section{padding-block:var(--s9)}
 .card .ep{font-family:var(--mono); font-size:.76rem; color:var(--teal-deep); margin-top:.5rem; font-weight:500}
 .card p{margin-top:var(--s3); color:var(--ink-2); font-size:.98rem}
 
+/* the 4th, multimodal mode — highlighted */
+.photomode{position:relative; margin-top:var(--s5); border:1px solid var(--rule-firm); border-radius:var(--radius);
+  background:radial-gradient(760px 320px at 92% 0%, color-mix(in oklch,var(--teal) 12%, transparent), transparent 60%), var(--paper-2);
+  padding:var(--s6) var(--s6) var(--s6) calc(var(--s6) + 6px); overflow:hidden}
+.photomode::before{content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:linear-gradient(var(--teal), var(--amber))}
+.photomode .pm-badge{position:absolute; top:var(--s5); right:var(--s5); font-size:.64rem; font-weight:800; letter-spacing:.11em; text-transform:uppercase; color:#fff; background:var(--amber-deep); padding:.22rem .6rem; border-radius:6px}
+.pm-body{display:flex; gap:var(--s5); align-items:flex-start}
+.photomode h3{font-size:1.32rem}
+.photomode h3 .muted{font-weight:400}
+.photomode .ep{font-family:var(--mono); font-size:.78rem; color:var(--teal-deep); margin-top:.45rem; font-weight:500}
+.photomode p{margin-top:var(--s3); color:var(--ink-2); font-size:1rem; max-width:74ch}
+@media(max-width:560px){ .pm-body{flex-direction:column; gap:var(--s4)} .photomode .pm-badge{position:static; display:inline-block; margin-bottom:var(--s3)} }
+
 /* pipeline */
 .pipe{display:grid; grid-template-columns:1fr auto 1fr auto 1fr; align-items:stretch; gap:var(--s4); margin-top:var(--s7)}
 @media(max-width:860px){ .pipe{grid-template-columns:1fr; } .pipe .step-arrow{transform:rotate(90deg); justify-self:center} }
@@ -280,6 +293,7 @@ footer .lic{font-size:.8rem; color:var(--night-line); margin-top:var(--s6); widt
           <span class="pill">Window views</span>
           <span class="pill">Scene Q&amp;A</span>
           <span class="pill">Image prompts</span>
+          <span class="pill">Photo reading</span>
           <span class="pill">BYO model</span>
         </div>
         <div class="cta">
@@ -316,9 +330,9 @@ footer .lic{font-size:.8rem; color:var(--night-line); margin-top:var(--s6); widt
 <section id="what">
   <div class="wrap">
     <div class="sec-head">
-      <span class="eyebrow">Three modes, one idea</span>
+      <span class="eyebrow">Four modes, one idea</span>
       <h2>A scene goes in. Words come out.</h2>
-      <p>geobard is deliberately small: a thin, well-prompted layer between your map data and a language model. Three endpoints cover three jobs.</p>
+      <p>geobard is deliberately small: a thin, well-prompted layer between your map data and a language model. Three modes generate from data alone — and a fourth reads a real photo through it.</p>
     </div>
     <div class="cards">
       <article class="card">
@@ -339,6 +353,18 @@ footer .lic{font-size:.8rem; color:var(--night-line); margin-top:var(--s6); widt
         <div class="ep">POST /image/prompt</div>
         <p>Turn the same scene into a prompt built for an image model, foregrounding the architecture and city structure so the render is faithful to the place rather than generic.</p>
       </article>
+    </div>
+
+    <div class="photomode">
+      <span class="pm-badge">New in 0.2</span>
+      <div class="pm-body">
+        <div class="ic">🖼️</div>
+        <div>
+          <h3>Read a photo <span class="muted">— through its data</span></h3>
+          <div class="ep">POST /narrate/photo</div>
+          <p>The three modes above generate from data alone. This one takes a real photo <em>and</em> the data for the same patch of ground, and interprets one through the other — identifying what's visible, explaining it with the record, and reconciling where the image and the data disagree. The photo carries appearance; the data carries meaning. (Needs a vision-capable model.)</p>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -454,8 +480,8 @@ curl -sS http://localhost:8000/narrate/window \
   <div class="wrap">
     <div class="sec-head">
       <span class="eyebrow">API surface</span>
-      <h2>Four routes, that's all.</h2>
-      <p>Every request can override the <code>model</code> and <code>temperature</code> per call. Window and image modes take a <code>detail_level</code>; all narration modes accept optional <code>system</code> prompt lines.</p>
+      <h2>Five routes, that's all.</h2>
+      <p>Every request can override the <code>model</code> and <code>temperature</code> per call. Window, image, and photo modes take a <code>detail_level</code>; all narration modes accept optional <code>system</code> prompt lines.</p>
     </div>
     <div class="api">
       <div class="arow">
@@ -465,6 +491,10 @@ curl -sS http://localhost:8000/narrate/window \
       <div class="arow">
         <div class="ep"><span class="verb">POST</span>/narrate/prompt</div>
         <div class="desc">Answer a custom <code>prompt</code> about the scene. Same body plus the question string.</div>
+      </div>
+      <div class="arow">
+        <div class="ep"><span class="verb">POST</span>/narrate/photo</div>
+        <div class="desc">Interpret an <code>image_url</code> through same-area data. Takes <code>viewpoint</code> (ground/aerial/oblique) and <code>grounding</code> (loose/strict). Needs a vision model.</div>
       </div>
       <div class="arow">
         <div class="ep"><span class="verb">POST</span>/image/prompt</div>

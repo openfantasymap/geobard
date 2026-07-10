@@ -5,11 +5,14 @@
 [![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)](#license)
 
 **Turn GeoJSON into prose.** A small FastAPI service that takes a GeoJSON
-description of a scene and asks an LLM to produce one of three things:
+description of a scene and asks an LLM to produce one of four things:
 
 - **A window view** — natural-language description, as if you were standing there.
 - **An answer to a question** — pass a `prompt` along with the scene.
 - **An image-generation prompt** — text suitable for feeding to an image model.
+- **A reading of a photo** — pass a photo *and* the data for the same area, and get
+  an interpretation: what's visible, explained through the data, and reconciled
+  where the two disagree.
 
 geobard speaks the OpenAI chat-completions API, so it works with OpenAI
 directly, OpenRouter, Ollama, Groq, Together, or any other compatible
@@ -98,6 +101,29 @@ Produces a prompt suitable for an image-generation model. Body:
   "temperature":  0.7
 }
 ```
+
+### `POST /narrate/photo`
+
+Interpret a photo *through* the data for the same area — identify what's visible,
+explain it using the data, and reconcile where the two disagree. The photo carries
+appearance; the data carries meaning. Body:
+
+```json
+{
+  "geojson":      {<feature collection for the same area>},
+  "image_url":    "https://… or data:image/jpeg;base64,…",
+  "viewpoint":    "ground | aerial | oblique",   // how photo & data register
+  "grounding":    "loose | strict",              // strict = only what's visible
+  "detail_level": "medium",
+  "system":       ["optional", "voice"],
+  "model":        "...",                          // must be vision-capable
+  "temperature":  0.7
+}
+```
+
+Returns `{"text": "...", "model": "..."}`. **Note:** `model` (or the default
+`GEOBARD_OPENAI_MODEL`) must be a vision-capable model, since the request carries
+an image.
 
 ### `GET /healthz`
 

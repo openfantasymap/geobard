@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "geobard"
-version = "0.1.0"
-description = "Turn GeoJSON into prose. Window views, custom prompts, and image-generation prompts via any OpenAI-compatible chat-completions endpoint."
+version = "0.2.0"
+description = "Turn GeoJSON into prose. Window views, custom prompts, image-generation prompts, and data-driven photo interpretation via any OpenAI-compatible chat-completions endpoint."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT OR Apache-2.0" }

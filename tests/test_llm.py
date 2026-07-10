@@ -75,6 +75,53 @@ def test_image_prompt_uses_image_system():
     assert "high level of detail" in user
 
 
+def _content_parts(client):
+    return _captured(client)["messages"][1]["content"]
+
+
+def _text_part(parts):
+    return next(p for p in parts if p["type"] == "text")["text"]
+
+
+def test_interpret_photo_builds_multimodal_message():
+    client = _stub_client("the leaning tower is the old watchpost")
+    result = llm.interpret_photo(
+        client=client,
+        model="vision-model",
+        image_url="https://example.com/tower.jpg",
+        geojson={"type": "FeatureCollection",
+                 "features": [{"properties": {"name": "watchpost"}}]},
+        viewpoint="ground",
+        detail_level="high",
+        system=["You are a chronicler."],
+    )
+    assert result == "the leaning tower is the old watchpost"
+    kw = _captured(client)
+    assert kw["model"] == "vision-model"
+    msgs = kw["messages"]
+    assert msgs[0] == {"role": "system", "content": "You are a chronicler."}
+    parts = msgs[1]["content"]
+    assert isinstance(parts, list)
+    image_part = next(p for p in parts if p["type"] == "image_url")
+    assert image_part["image_url"]["url"] == "https://example.com/tower.jpg"
+    text = _text_part(parts)
+    assert "THROUGH the data" in text            # interprets, not captions
+    assert "watchpost" in text                   # data serialised in
+    assert "high level of detail" in text
+
+
+def test_interpret_photo_viewpoint_and_grounding():
+    client = _stub_client("ok")
+    llm.interpret_photo(
+        client=client, model="m",
+        image_url="data:image/png;base64,AAAA",
+        geojson={}, viewpoint="aerial", grounding="strict",
+    )
+    text = _text_part(_content_parts(client))
+    assert "overhead" in text.lower()            # aerial spatial hint
+    assert "Only mention data features you can plausibly see" in text  # strict rule
+
+
 def test_no_system_lines_yields_empty_system():
     client = _stub_client("ok")
     llm.narrate_window_view(client=client, model="m", geojson={})
